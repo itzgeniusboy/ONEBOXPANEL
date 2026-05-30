@@ -11,18 +11,16 @@ interface HeaderProps {
 }
 
 export default function Header({ user, loading, totalKeys, activeKeys }: HeaderProps) {
-  const handleLogin = async () => {
-    try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-    } catch (err) {
-      console.error("Login failed:", err);
-    }
+  const handleLogin = () => {
+    // Scroll or focus back to login form organically
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleLogout = async () => {
     try {
+      localStorage.removeItem('onebox_logged_in');
       await signOut(auth);
+      window.location.reload();
     } catch (err) {
       console.error("Signout failed:", err);
     }
