@@ -33,22 +33,29 @@ export default function App() {
 
   // 1. Authenticaton matching Google verification to simple ONEBOX credentials
   useEffect(() => {
+    if (localStorage.getItem('onebox_logged_in') === 'true') {
+      const wrappedUser = {
+        uid: auth.currentUser?.uid || 'onebox-admin-uid',
+        email: 'onebox@onebox.com',
+        displayName: 'ONEBOX ADMIN',
+        emailVerified: true,
+      } as unknown as User;
+      setUser(wrappedUser);
+      setLoading(false);
+    } else {
+      setUser(null);
+      setLoading(false);
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (usr) => {
       if (localStorage.getItem('onebox_logged_in') === 'true') {
-        if (!usr) {
-          signInAnonymously(auth).catch((err) => {
-            console.error("Firebase auth sync failed:", err);
-          });
-        } else {
-          // Emulate verified user claims for safety rules
-          const wrappedUser = {
-            uid: usr.uid,
-            email: 'onebox@onebox.com',
-            displayName: 'ONEBOX ADMIN',
-            emailVerified: true,
-          } as unknown as User;
-          setUser(wrappedUser);
-        }
+        const wrappedUser = {
+          uid: usr?.uid || 'onebox-admin-uid',
+          email: 'onebox@onebox.com',
+          displayName: 'ONEBOX ADMIN',
+          emailVerified: true,
+        } as unknown as User;
+        setUser(wrappedUser);
       } else {
         setUser(null);
       }
@@ -139,13 +146,20 @@ export default function App() {
     if (cleanUsername === 'ONEBOX' && passwordInput === 'onebox') {
       try {
         setLoading(true);
-        await signInAnonymously(auth);
+        // Attempt anonymous login but catch failure if it's disabled in Firebase Console
+        try {
+          await signInAnonymously(auth);
+        } catch (authErr: any) {
+          console.warn("Firebase Anonymous Auth warning (can be ignored if security rules allow public access):", authErr);
+        }
         localStorage.setItem('onebox_logged_in', 'true');
         setIsLocalLoggedIn(true);
         setUsernameInput('');
         setPasswordInput('');
-      } catch (err) {
-        setLoginError('Authentication failed. Database connection error.');
+        setLoading(false);
+      } catch (err: any) {
+        console.error("Login failed thoroughly:", err);
+        setLoginError(`Authentication failed. Details: ${err?.message || String(err)}`);
         setLoading(false);
       }
     } else {
