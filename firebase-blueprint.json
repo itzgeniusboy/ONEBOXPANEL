@@ -1,0 +1,130 @@
+{
+  "entities": {
+    "LicenseKey": {
+      "title": "LicenseKey",
+      "description": "Represents an SDK license key generated for client authentication.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "The unique license key used by the SDK."
+        },
+        "label": {
+          "type": "string",
+          "description": "User-friendly description or customer name."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "blocked", "expired"],
+          "description": "The current status of the key."
+        },
+        "expiryType": {
+          "type": "string",
+          "enum": ["lifetime", "duration"],
+          "description": "Whether the key lasts forever or expires after registration + duration."
+        },
+        "durationDays": {
+          "type": "integer",
+          "description": "Number of days the key is valid after first activation."
+        },
+        "activatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The ISO timestamp when the key was first used."
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The calculated expiration timestamp."
+        },
+        "deviceLimit": {
+          "type": "integer",
+          "description": "Maximum number of devices allowed. 0 means unlimited."
+        },
+        "deviceCount": {
+          "type": "integer",
+          "description": "Current number of registered devices."
+        },
+        "devices": {
+          "type": "object",
+          "description": "Map of registered hardware IDs (HWIDs) to registration timestamps."
+        },
+        "sdkType": {
+          "type": "string",
+          "description": "The specific SDK variant (e.g. Standard, Premium, Bypass)."
+        },
+        "allowedPackage": {
+          "type": "string",
+          "description": "Optional packageName restriction (e.g., com.example.app). Empty means any package."
+        },
+        "creatorEmail": {
+          "type": "string",
+          "description": "The email of the administrator who created the key."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The ISO timestamp when the key was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The ISO timestamp when the key was last updated."
+        }
+      },
+      "required": ["key", "label", "status", "expiryType", "deviceLimit", "deviceCount", "createdAt"]
+    },
+    "ValidationLog": {
+      "title": "ValidationLog",
+      "description": "Logs recording SDK validation inquiries from .aar files.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "The license key supplied during verification."
+        },
+        "hwid": {
+          "type": "string",
+          "description": "Hardware ID sent by the Android .aar client."
+        },
+        "packageName": {
+          "type": "string",
+          "description": "The package name of the app containing the .aar client."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["success", "failed_blocked", "failed_expired", "failed_hwid_limit", "failed_invalid_key", "failed_package_mismatch"],
+          "description": "Result of the verification query."
+        },
+        "ip": {
+          "type": "string",
+          "description": "IP address of the device making the request."
+        },
+        "sdkType": {
+          "type": "string",
+          "description": "The SDK type linked to the license key."
+        },
+        "errorMessage": {
+          "type": "string",
+          "description": "Error message if validation failed."
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Date-time when the transaction took place."
+        }
+      },
+      "required": ["key", "hwid", "packageName", "status", "timestamp"]
+    }
+  },
+  "firestore": {
+    "keys/{keyId}": {
+      "schema": "LicenseKey",
+      "description": "Collection of all licenses and keys."
+    },
+    "logs/{logId}": {
+      "schema": "ValidationLog",
+      "description": "Validation event logs for client-SDK monitoring."
+    }
+  }
+}

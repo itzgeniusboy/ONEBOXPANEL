@@ -1,0 +1,6 @@
+{
+  "name": "Virtual SDK Firebase Key Panel",
+  "description": "A secure Firebase key manager and real-time dashboard for virtual SDK license validation, HWID authentication, and device logs.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

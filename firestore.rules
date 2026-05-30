@@ -1,0 +1,106 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Helper to validate LicenseKey format and schema
+    function isValidLicenseKey(data) {
+      return data.key is string && data.key.size() > 0 && data.key.size() <= 100 &&
+             data.label is string && data.label.size() <= 200 &&
+             data.status is string && (data.status == 'active' || data.status == 'blocked' || data.status == 'expired') &&
+             data.expiryType is string && (data.expiryType == 'lifetime' || data.expiryType == 'duration') &&
+             data.deviceLimit is int && data.deviceLimit >= 0 &&
+             data.deviceCount is int && data.deviceCount >= 0 &&
+             data.sdkType is string && data.sdkType.size() <= 100 &&
+             (data.createdAt is string || data.createdAt is timestamp);
+    }
+
+    // Helper to validate Log format and schema
+    function isValidLog(data) {
+      return data.key is string && data.key.size() <= 100 &&
+             data.hwid is string && data.hwid.size() <= 200 &&
+             data.packageName is string && data.packageName.size() <= 200 &&
+             data.status is string && data.status.size() <= 50 &&
+             (data.timestamp is string || data.timestamp is timestamp);
+    }
+
+    match /keys/{keyId} {
+      allow get: if true; // API server or client can fetch a single key if they know the ID
+      allow list: if isSignedIn(); // Secured: only signed-in admin/users can list keys
+      
+      allow create: if isEmailVerified() && 
+                    isValidId(keyId) && 
+                    isValidLicenseKey(incoming()) &&
+                    incoming().creatorEmail == request.auth.token.email;
+
+      allow update: if (
+        // Case A: Signed-in admin/creator update (e.g., toggle status, wipe devices)
+        (isEmailVerified() && 
+         isValidId(keyId) && 
+         isValidLicenseKey(incoming()) &&
+         // Ensure tracking/core fields don't bypass integrity
+         incoming().createdAt == existing().createdAt &&
+         incoming().creatorEmail == existing().creatorEmail &&
+         incoming().key == existing().key)
+        ||
+        // Case B: Unauthenticated updates from the Client Emulator Backend API
+        (request.auth == null &&
+         isValidId(keyId) &&
+         // Ensure all standard administrative fields match existing values (strict immutability)
+         incoming().key == existing().key &&
+         incoming().label == existing().label &&
+         incoming().creatorEmail == existing().creatorEmail &&
+         incoming().createdAt == existing().createdAt &&
+         incoming().deviceLimit == existing().deviceLimit &&
+         incoming().expiryType == existing().expiryType &&
+         incoming().sdkType == existing().sdkType &&
+         // Limit exactly which operations the unauthenticated API endpoint can execute
+         incoming().diff(existing()).affectedKeys().hasOnly(['devices', 'deviceCount', 'updatedAt', 'activatedAt', 'expiresAt', 'status'])
+        )
+      );
+
+      allow delete: if isEmailVerified();
+    }
+
+    match /logs/{logId} {
+      allow read: if isSignedIn(); // Only admins can read/list validation logs
+      allow create: if isValidLog(incoming()); // Allow both emulator backend & client to record validation events
+    }
+
+    match /apps/{appId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /admins/{adminId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /resellers/{resellerId} {
+      allow read, write: if isSignedIn();
+    }
+  }
+}
